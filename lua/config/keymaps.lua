@@ -19,7 +19,7 @@ end
 telescope.setup {
   defaults = {
     -- Эти настройки применяются во время поиска файлов
-    file_ignore_patterns = {"env/", "venv/"},
+    file_ignore_patterns = {"env/", "venv/", "env16/", "env18/", "env22/"},
   }
 }
 local builtin = require('telescope.builtin')
@@ -29,47 +29,62 @@ vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = 'Telescope buf
 vim.keymap.set('n', '<leader>/', builtin.current_buffer_fuzzy_find, { desc = 'Telescope buffer fuzzy find' })
 
 -- Настройки LSP
-vim.api.nvim_create_autocmd('LspAttach', {
-  callback = function(args)
-    -- Enable completion triggered by <c-x><c-o>
-    vim.bo[args.buf].omnifunc = 'v:lua.vim.lsp.omnifunc'
-    vim.keymap.set({ 'n', 'v' }, '<leader>r', vim.lsp.buf.rename, { buffer = args.buf })
-    vim.keymap.set({ 'n', 'v' }, '<leader>a', vim.lsp.buf.code_action, { buffer = args.buf })
-    local client = vim.lsp.get_client_by_id(args.data.client_id)
-    vim.keymap.set('n', '<leader>jr', vim.lsp.buf.references, { buffer = args.buf })
-    local opts = { buffer = args.buf }
-    vim.keymap.set('n', '<leader>jD', vim.lsp.buf.declaration, opts)
-    vim.keymap.set('n', '<leader>gd', vim.lsp.buf.definition, opts)
-    if client.server_capabilities.hoverProvider then
-      vim.keymap.set('n', '<leader>h', vim.lsp.buf.hover, { buffer = args.buf })
-    end
-    vim.keymap.set('n', '<leader>ji', vim.lsp.buf.implementation, opts)
-    vim.keymap.set('n', '<C-i>', vim.lsp.buf.signature_help, opts)
-    vim.keymap.set('n', '<leader>wa', vim.lsp.buf.add_workspace_folder, opts)
-    vim.keymap.set('n', '<leader>wr', vim.lsp.buf.remove_workspace_folder, opts)
-    vim.keymap.set('n', '<leader>wl', function()
-      print(vim.inspect(vim.lsp.buf.list_workspace_folders()))
-    end, opts)
-    vim.keymap.set('n', '<leader>D', vim.lsp.buf.type_definition, opts)
-    vim.keymap.set('n', '<leader>l', function()
-      vim.lsp.buf.format { async = true }
-    end, opts)
-    -- Автокоманда для отображения всплывающего окна с диагностикой
-    vim.api.nvim_create_autocmd("CursorHold", {
-      buffer = args.buf,
-      callback = function()
-        vim.diagnostic.open_float(nil, { focusable = false })
-      end
-    })
-  end,
-})
+-- LSP конфигурация
+local nvim_lsp = require('lspconfig')
 
-vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(
-  vim.lsp.diagnostic.on_publish_diagnostics, {
-    -- Disable signs
-    signs = false,
-  }
-)
+-- Основная функция привязки
+local function on_attach(client, bufnr)
+  local opts = { buffer = bufnr }
+
+  -- Настройки keymap
+  vim.bo[bufnr].omnifunc = 'v:lua.vim.lsp.omnifunc'
+  vim.keymap.set('n', '<leader>gd', vim.lsp.buf.definition, opts)
+  vim.keymap.set('n', '<leader>h', vim.lsp.buf.hover, opts)
+
+  -- Создаем автокоманду для диагностики
+  vim.api.nvim_create_autocmd("CursorHold", {
+    buffer = bufnr,
+    callback = function()
+      vim.diagnostic.open_float(nil, { focusable = false })
+    end,
+  })
+end
+
+-- Определяем функцию для получения пути до интерпретатора
+local function get_python_path(workspace)
+  -- Используем venv
+  local venv = vim.fn.getenv('VIRTUAL_ENV')
+  if venv ~= vim.NIL and venv ~= '' then
+    return venv .. '/bin/python'
+  end
+  -- Фолбек на системный Python, если VIRTUAL_ENV не установлен
+  return '/usr/bin/python'
+end
+
+nvim_lsp.pyright.setup{
+  on_attach = on_attach,
+  settings = {
+    python = {
+      pythonPath = get_python_path(vim.fn.getcwd()),
+      analysis = {
+        extraPaths = { "lib" },  -- добавляем папку lib как дополнительный путь
+      },
+    },
+  },
+  handlers = {
+    ["textDocument/publishDiagnostics"] = vim.lsp.with(
+      vim.lsp.diagnostic.on_publish_diagnostics, {
+        signs = false,
+      }
+    ),
+  },
+}
+
+-- Добавьте подобные конфигурации для других LSP серверов
+-- Например, для tsserver (TypeScript/JavaScript)
+-- nvim_lsp.tsserver.setup{
+--   on_attach = on_attach  -- Используем ту же функцию on_attach
+-- }
 
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 vim.keymap.set('n', '<leader>w', '<cmd>w<CR>')
