@@ -18,13 +18,33 @@ end
 
 telescope.setup {
   defaults = {
-    -- Эти настройки применяются во время поиска файлов
     file_ignore_patterns = {"env/", "venv/", "env16/", "env18/", "env22/"},
   }
 }
+
 local builtin = require('telescope.builtin')
-vim.keymap.set('n', '<leader>ff', builtin.find_files, { desc = 'Telescope find files' })
-vim.keymap.set('n', '<leader>fg', builtin.live_grep, { desc = 'Telescope live grep' })
+
+-- Function to determine the root directory
+local function get_root_dir()
+  local git_root = vim.fn.systemlist("git rev-parse --show-toplevel")[1]
+  return git_root and #git_root > 0 and git_root or vim.loop.cwd()
+end
+
+-- Custom function to search files in the project root
+local function project_files()
+  local opts = { cwd = get_root_dir() } -- Set the working directory to the root directory
+  builtin.find_files(opts)
+end
+
+-- Custom function to live grep in the project root
+local function project_live_grep()
+  local opts = { cwd = get_root_dir() } -- Set the working directory to the root directory
+  builtin.live_grep(opts)
+end
+
+-- Key mappings
+vim.keymap.set('n', '<leader>ff', project_files, { desc = 'Telescope find files in project' })
+vim.keymap.set('n', '<leader>fg', project_live_grep, { desc = 'Telescope live grep in project' })
 vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = 'Telescope buffers' })
 vim.keymap.set('n', '<leader>/', builtin.current_buffer_fuzzy_find, { desc = 'Telescope buffer fuzzy find' })
 
@@ -88,4 +108,4 @@ nvim_lsp.pyright.setup{
 
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 vim.keymap.set('n', '<leader>w', '<cmd>w<CR>')
-
+vim.keymap.set('n', '<C-\\>', '<Cmd>ToggleTerm<CR>', { desc = 'Toggle terminal' })
