@@ -108,4 +108,30 @@ nvim_lsp.pyright.setup{
 
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 vim.keymap.set('n', '<leader>w', '<cmd>w<CR>')
-vim.keymap.set('n', '<C-\\>', '<Cmd>ToggleTerm<CR>', { desc = 'Toggle terminal' })
+local Terminal  = require('toggleterm.terminal').Terminal
+
+-- Определяем терминал с опциями focus=true
+local my_terminal = Terminal:new({
+  hidden = true,
+  direction = 'float', -- или 'vertical', 'horizontal', 'tab'
+  close_on_exit = true,
+  on_open = function(term)
+    -- Фокус на терминале, когда он открывается
+    vim.cmd('startinsert!')
+  end,
+})
+
+-- Функция для переключения
+function _G.toggle_my_terminal()
+  if my_terminal:is_open() then
+    my_terminal:close()
+    -- Переключаем фокус обратно на файл
+    vim.cmd('wincmd p')
+  else
+    my_terminal:open()
+  end
+end
+
+-- Привязываем к ctrl-\
+vim.api.nvim_set_keymap('n', '<C-\\>', '<Cmd>lua toggle_my_terminal()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('t', '<C-\\>', '<Cmd>lua toggle_my_terminal()<CR>', { noremap = true, silent = true })
