@@ -128,6 +128,9 @@ function _G.toggle_my_terminal()
     -- Переключаем фокус обратно на файл
     vim.cmd('wincmd p')
   else
+    -- Установите рабочую директорию в начальную директорию nvim
+    local initial_dir = vim.fn.getcwd(-1, -1)  -- Использует первоначальную директорию запуска neovim
+    vim.cmd('lcd ' .. initial_dir)
     my_terminal:open()
   end
 end
