@@ -8,7 +8,58 @@ local opts = { noremap = true, silent = true }
 vim.g.netrw_banner = 0          -- Отключение рекламного баннера
 vim.g.netrw_keepdir = 0         -- Изменять текущую директорию на выбранную в netrw
 vim.g.netrw_liststyle = 3       -- Использовать дерево для просмотра
-map('n', '<leader>e', ':Explore<CR>', opts)
+
+-- Глобальная таблица для хранения состояния
+_G.netrw_state = {}
+
+-- Объявление функции в глобальной области
+function _G.toggleNetrw()
+  -- Получаем список всех открытых окон
+  local windows = vim.api.nvim_tabpage_list_wins(0)
+  -- Проверяем, открыт ли Netrw уже
+  for _, win in ipairs(windows) do
+    local bufnr = vim.api.nvim_win_get_buf(win)
+    local bufname = vim.api.nvim_buf_get_name(bufnr)
+    if string.find(bufname, 'NetrwTreeListing') or string.find(bufname, 'NERD') then
+      -- Проверяем, доступен ли буфер, и закрываем его, если он валиден
+      if vim.api.nvim_buf_is_valid(bufnr) then
+        vim.cmd("bwipeout")
+      else
+        vim.cmd("bwipeout!")
+      end
+      -- Переключаемся обратно на последний буфер, если он доступен
+      if _G.netrw_state.prev_buf and vim.api.nvim_buf_is_valid(_G.netrw_state.prev_buf) then
+        vim.cmd('buffer ' .. _G.netrw_state.prev_buf)
+      end
+      return
+    end
+  end
+  -- Сохраняем текущий буфер
+  _G.netrw_state.prev_buf = vim.fn.bufnr()
+  -- Открываем Netrw
+  vim.cmd("Explore")
+end
+
+-- Привязываем функцию к <leader>e
+vim.api.nvim_set_keymap('n', '<leader>e', ':lua toggleNetrw()<CR>', { noremap = true, silent = true, desc = 'Открыть/закрыть дерево файлов' })
+
+-- Настройка bufferline
+require('bufferline').setup {
+  options = {
+    numbers = "ordinal",
+    show_buffer_close_icons = true,
+    show_close_icon = false,
+    separator_style = "thin",
+    diagnostics = "nvim_lsp",
+    offsets = {{ filetype = "NvimTree", text = "File Explorer", text_align = "center", padding = 1 }},
+  }
+}
+-- Настройка авто-команды для переключения между буферами с помощью Tab и Shift+Tab
+vim.api.nvim_set_keymap('n', '<Tab>', ':BufferLineCycleNext<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<S-Tab>', ':BufferLineCyclePrev<CR>', { noremap = true, silent = true })
+
+-- Установка для безопасного удаления буферов
+vim.api.nvim_set_keymap('n', '<leader>bd', ':BufDel<CR>', { noremap = true, silent = true })
 
 -- Настройки Telescope
 local status, telescope = pcall(require, "telescope")
@@ -45,7 +96,6 @@ end
 -- Key mappings
 vim.keymap.set('n', '<leader>ff', project_files, { desc = 'Telescope find files in project' })
 vim.keymap.set('n', '<leader>fg', project_live_grep, { desc = 'Telescope live grep in project' })
-vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = 'Telescope buffers' })
 vim.keymap.set('n', '<leader>/', builtin.current_buffer_fuzzy_find, { desc = 'Telescope buffer fuzzy find' })
 
 -- Настройки LSP
@@ -60,6 +110,7 @@ local function on_attach(client, bufnr)
   vim.bo[bufnr].omnifunc = 'v:lua.vim.lsp.omnifunc'
   vim.keymap.set('n', '<leader>gd', vim.lsp.buf.definition, opts)
   vim.keymap.set('n', '<leader>h', vim.lsp.buf.hover, opts)
+  vim.keymap.set('n', '<leader>gr', vim.lsp.buf.rename, opts)
 
   -- Создаем автокоманду для диагностики
   vim.api.nvim_create_autocmd("CursorHold", {
