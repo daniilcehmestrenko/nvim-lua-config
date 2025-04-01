@@ -5,37 +5,37 @@ local map = vim.api.nvim_set_keymap
 local opts = { noremap = true, silent = true }
 
 -- Настройки для netrw
-vim.g.netrw_banner = 0          -- Отключение рекламного баннера
-vim.g.netrw_keepdir = 0         -- Изменять текущую директорию на выбранную в netrw
-vim.g.netrw_liststyle = 3       -- Использовать дерево для просмотра
+vim.g.netrw_banner = 0
+vim.g.netrw_keepdir = 1
+vim.g.netrw_liststyle = 1
 
 -- Глобальная таблица для хранения состояния
 _G.netrw_state = {}
 
 -- Объявление функции в глобальной области
 function _G.toggleNetrw()
-  -- Получаем список всех открытых окон
+  local current_win = vim.api.nvim_get_current_win()
   local windows = vim.api.nvim_tabpage_list_wins(0)
-  -- Проверяем, открыт ли Netrw уже
+
+  -- Поиск окна Netrw
   for _, win in ipairs(windows) do
     local bufnr = vim.api.nvim_win_get_buf(win)
     local bufname = vim.api.nvim_buf_get_name(bufnr)
-    if string.find(bufname, 'NetrwTreeListing') or string.find(bufname, 'NERD') then
-      -- Проверяем, доступен ли буфер, и закрываем его, если он валиден
-      if vim.api.nvim_buf_is_valid(bufnr) then
-        vim.cmd("bwipeout")
-      else
-        vim.cmd("bwipeout!")
-      end
-      -- Переключаемся обратно на последний буфер, если он доступен
+    
+    if vim.bo[bufnr].filetype == 'netrw' then
+      -- Если Netrw открыт, переключаемся на предыдущий буфер
       if _G.netrw_state.prev_buf and vim.api.nvim_buf_is_valid(_G.netrw_state.prev_buf) then
+        vim.api.nvim_set_current_win(_G.netrw_state.prev_win)
         vim.cmd('buffer ' .. _G.netrw_state.prev_buf)
       end
       return
     end
   end
-  -- Сохраняем текущий буфер
-  _G.netrw_state.prev_buf = vim.fn.bufnr()
+
+  -- Сохраняем текущие окно и буфер перед открытием Netrw
+  _G.netrw_state.prev_win = current_win
+  _G.netrw_state.prev_buf = vim.api.nvim_get_current_buf()
+
   -- Открываем Netrw
   vim.cmd("Explore")
 end
