@@ -89,7 +89,12 @@ end
 
 -- Custom function to live grep in the project root
 local function project_live_grep()
-  local opts = { cwd = get_root_dir() } -- Set the working directory to the root directory
+  local opts = {
+    cwd = get_root_dir(),
+    additional_args = function()
+      return {"--fixed-strings"}  -- Это заставит 'rg' искать полные соответствия строк
+    end
+  }
   builtin.live_grep(opts)
 end
 
@@ -146,6 +151,28 @@ nvim_lsp.pyright.setup{
     ["textDocument/publishDiagnostics"] = vim.lsp.with(
       vim.lsp.diagnostic.on_publish_diagnostics, {
         signs = false,
+      }
+    ),
+  },
+}
+
+-- Настройка для rust-analyzer
+nvim_lsp.rust_analyzer.setup{
+  on_attach = on_attach,
+  settings = {
+    ["rust-analyzer"] = {
+      cargo = {
+        allFeatures = true,  -- Включаем все фичи для Cargo
+      },
+      checkOnSave = {
+        command = "clippy",  -- Используем clippy для проверки на лету
+      },
+    },
+  },
+  handlers = {
+    ["textDocument/publishDiagnostics"] = vim.lsp.with(
+      vim.lsp.diagnostic.on_publish_diagnostics, {
+        signs = true,  -- Включаем знаки ошибок в боковой панели
       }
     ),
   },
