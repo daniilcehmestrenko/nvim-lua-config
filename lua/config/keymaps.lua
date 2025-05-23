@@ -103,21 +103,33 @@ vim.keymap.set('n', '<leader>ff', project_files, { desc = 'Telescope find files 
 vim.keymap.set('n', '<leader>fg', project_live_grep, { desc = 'Telescope live grep in project' })
 vim.keymap.set('n', '<leader>/', builtin.current_buffer_fuzzy_find, { desc = 'Telescope buffer fuzzy find' })
 
--- Настройки LSP
--- LSP конфигурация
 local nvim_lsp = require('lspconfig')
+
+-- Включаем поддержку сортировки по серьезности
+vim.diagnostic.config({
+  virtual_text = false,  -- Выключаем виртуальный текст, чтобы не мешал
+  signs = true,
+  underline = true,
+  update_in_insert = false,
+  severity_sort = true,
+})
+
+-- Определяем знаки для различных уровней диагностики
+local signs = { Error = "E", Warn = "W", Hint = "H", Info = "I" }
+for type, icon in pairs(signs) do
+  local hl = "DiagnosticSign" .. type
+  vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = hl })
+end
 
 -- Основная функция привязки
 local function on_attach(client, bufnr)
   local opts = { buffer = bufnr }
 
-  -- Настройки keymap
   vim.bo[bufnr].omnifunc = 'v:lua.vim.lsp.omnifunc'
   vim.keymap.set('n', '<leader>gd', vim.lsp.buf.definition, opts)
   vim.keymap.set('n', '<leader>h', vim.lsp.buf.hover, opts)
   vim.keymap.set('n', '<leader>gr', vim.lsp.buf.rename, opts)
 
-  -- Создаем автокоманду для диагностики
   vim.api.nvim_create_autocmd("CursorHold", {
     buffer = bufnr,
     callback = function()
@@ -126,14 +138,11 @@ local function on_attach(client, bufnr)
   })
 end
 
--- Определяем функцию для получения пути до интерпретатора
 local function get_python_path(workspace)
-  -- Используем venv
   local venv = vim.fn.getenv('VIRTUAL_ENV')
   if venv ~= vim.NIL and venv ~= '' then
     return venv .. '/bin/python'
   end
-  -- Фолбек на системный Python, если VIRTUAL_ENV не установлен
   return '/usr/bin/python'
 end
 
@@ -143,40 +152,34 @@ nvim_lsp.pyright.setup{
     python = {
       pythonPath = get_python_path(vim.fn.getcwd()),
       analysis = {
-        extraPaths = { "lib" },  -- добавляем папку lib как дополнительный путь
+        extraPaths = { "lib" },
       },
     },
   },
-  handlers = {
-    ["textDocument/publishDiagnostics"] = vim.lsp.with(
-      vim.lsp.diagnostic.on_publish_diagnostics, {
-        signs = false,
-      }
-    ),
-  },
 }
 
--- Настройка для rust-analyzer
 nvim_lsp.rust_analyzer.setup{
   on_attach = on_attach,
   settings = {
     ["rust-analyzer"] = {
       cargo = {
-        allFeatures = true,  -- Включаем все фичи для Cargo
+        allFeatures = true,
       },
       checkOnSave = {
-        command = "clippy",  -- Используем clippy для проверки на лету
+        command = "clippy",
       },
     },
   },
-  handlers = {
-    ["textDocument/publishDiagnostics"] = vim.lsp.with(
-      vim.lsp.diagnostic.on_publish_diagnostics, {
-        signs = true,  -- Включаем знаки ошибок в боковой панели
-      }
-    ),
-  },
 }
+
+-- Вы также можете определить цвета для диагностики в вашей `init.vim` или `init.lua`:
+-- Терялся при поиске?
+vim.cmd [[
+  highlight DiagnosticError guifg=Red
+  highlight DiagnosticWarn guifg=Orange
+  highlight DiagnosticInfo guifg=Blue
+  highlight DiagnosticHint guifg=Green
+]]
 
 -- Добавьте подобные конфигурации для других LSP серверов
 -- Например, для tsserver (TypeScript/JavaScript)
