@@ -158,6 +158,22 @@ nvim_lsp.pyright.setup{
   },
 }
 
+nvim_lsp.ts_ls.setup{
+  on_attach = on_attach,
+  capabilities = vim.lsp.protocol.make_client_capabilities(),
+  flags = {
+    debounce_text_changes = 150,
+  },
+  settings = {
+    init_options = {
+      hostInfo = "neovim",
+      preferences = {
+        importModuleSpecifierPreference = "relative",
+      },
+    },
+  },
+}
+
 nvim_lsp.rust_analyzer.setup{
   on_attach = on_attach,
   settings = {
