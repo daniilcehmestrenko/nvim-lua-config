@@ -103,8 +103,6 @@ vim.keymap.set('n', '<leader>ff', project_files, { desc = 'Telescope find files 
 vim.keymap.set('n', '<leader>fg', project_live_grep, { desc = 'Telescope live grep in project' })
 vim.keymap.set('n', '<leader>/', builtin.current_buffer_fuzzy_find, { desc = 'Telescope buffer fuzzy find' })
 
-local nvim_lsp = require('lspconfig')
-
 -- Включаем поддержку сортировки по серьезности
 vim.diagnostic.config({
   virtual_text = false,  -- Выключаем виртуальный текст, чтобы не мешал
@@ -146,35 +144,45 @@ local function get_python_path(workspace)
   return '/usr/bin/python'
 end
 
-nvim_lsp.pyright.setup{
+vim.lsp.config("pyright", {
   on_attach = on_attach,
   settings = {
     python = {
+      -- NB: pythonPath у pyright сейчас считается устаревающим,
+      -- но если вам нужно именно так — можно оставить.
       pythonPath = get_python_path(vim.fn.getcwd()),
       analysis = {
         extraPaths = { "lib" },
       },
     },
   },
-}
+})
 
-nvim_lsp.ts_ls.setup{
+vim.lsp.enable("pyright")
+
+-- TypeScript / JavaScript (tsserver)
+vim.lsp.config("ts_ls", {
   on_attach = on_attach,
   capabilities = vim.lsp.protocol.make_client_capabilities(),
+
+  -- в новом API флагов из lspconfig может не быть смысла,
+  -- но оставляю как вы просили (если будет ругаться — уберите)
   flags = {
     debounce_text_changes = 150,
   },
-  settings = {
-    init_options = {
-      hostInfo = "neovim",
-      preferences = {
-        importModuleSpecifierPreference = "relative",
-      },
+
+  -- Важно: init_options должен быть на верхнем уровне, не внутри settings
+  init_options = {
+    hostInfo = "neovim",
+    preferences = {
+      importModuleSpecifierPreference = "relative",
     },
   },
-}
+})
+vim.lsp.enable("ts_ls")
 
-nvim_lsp.rust_analyzer.setup{
+-- Rust
+vim.lsp.config("rust_analyzer", {
   on_attach = on_attach,
   settings = {
     ["rust-analyzer"] = {
@@ -183,7 +191,8 @@ nvim_lsp.rust_analyzer.setup{
       },
     },
   },
-}
+})
+vim.lsp.enable("rust_analyzer")
 
 -- Вы также можете определить цвета для диагностики в вашей `init.vim` или `init.lua`:
 -- Терялся при поиске?
